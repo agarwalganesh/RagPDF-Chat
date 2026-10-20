@@ -39,7 +39,11 @@ The core design principle is **strict factual grounding**: the AI answers questi
    ```bash
    pip install -r requirements.txt
    ```
-   *Note: `backend/.env` is pre-configured with your Groq API key and model settings.*
+   Then create `backend/.env` from the template and add your Groq API key (get one at https://console.groq.com):
+   ```bash
+   cp .env.example .env
+   ```
+   *`.env` is git-ignored and is never deployed — production keys must be set in your hosting provider's environment variables.*
 
 4. Launch the FastAPI server:
    ```bash
@@ -67,6 +71,36 @@ The core design principle is **strict factual grounding**: the AI answers questi
    npm run dev
    ```
    The application will be live at: **`http://localhost:5173`**
+
+---
+
+## ☁️ Production Deployment (Netlify)
+
+The live site does **not** use the Python backend. On Netlify, the API runs as serverless functions next to the React app:
+
+| Local (FastAPI) | Production (Netlify) |
+|---|---|
+| `backend/app/api/documents.py` | `frontend/netlify/functions/documents.mts` |
+| `backend/app/api/chat.py` | `frontend/netlify/functions/chat.mts` |
+| FAISS + MiniLM embeddings | Postgres full-text search (Netlify DB) |
+| PDFs on local disk | Netlify Blobs |
+
+Steps:
+1. Connect the GitHub repo to Netlify — build settings come from `netlify.toml`.
+2. Enable **Netlify DB** for the site (the migrations in `frontend/netlify/database/migrations` create the tables).
+3. Under **Site configuration → Environment variables**, add:
+   - `GROQ_API_KEY` — your Groq key (**required**, otherwise chat fails)
+   - `GROQ_MODEL` — optional, defaults to `llama-3.3-70b-versatile`
+4. **Trigger a new deploy** (environment variables only apply to new deploys).
+5. Leave `VITE_API_BASE_URL` **unset** so the app calls the Netlify functions at `/api`. Only set it if you host the FastAPI backend separately (e.g. `https://my-backend.onrender.com`).
+
+### Troubleshooting
+| Symptom | Cause / Fix |
+|---|---|
+| "Chat request failed" | No `/api/chat` function deployed, or the response was HTML — redeploy the latest `main`. |
+| "GROQ_API_KEY is not set" | Add the key in Netlify env vars and redeploy. |
+| "Groq API error (404) model not found" | Set `GROQ_MODEL` to a valid model from https://console.groq.com/docs/models. |
+| Upload fails with HTTP 404/405 | `VITE_API_BASE_URL` points to the wrong place — unset it or fix it, then redeploy. |
 
 ---
 
@@ -113,7 +147,7 @@ DocuRAG Architecture
                                             ▼
                                   ┌───────────────────┐
                                   │     Groq LLM      │
-                                  │ (qwen/qwen3.8-27b)│
+                                  │ (llama-3.3-70b)   │
                                   └───────────────────┘
 ```
 
@@ -121,7 +155,8 @@ DocuRAG Architecture
 - **Backend:** FastAPI, Uvicorn, Pydantic, Python-Multipart.
 - **Vector Database:** FAISS (`IndexFlatIP` with normalized vectors for cosine similarity).
 - **Embeddings:** HuggingFace `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional).
-- **LLM Provider:** Groq Cloud (`qwen/qwen3.8-27b` / `openai/gpt-oss-120b`).
+- **LLM Provider:** Groq Cloud (`llama-3.3-70b-versatile` by default, configurable via `GROQ_MODEL`).
+- **Production:** Netlify Functions, Netlify DB (Postgres full-text search), Netlify Blobs (PDF storage).
 - **PDF Processing:** PyPDF page-aware text extraction with metadata preservation.
 
 ---
@@ -129,7 +164,8 @@ DocuRAG Architecture
 ## 📁 Project Structure
 
 ```text
-RAG_WITH_Frontnd/
+Rag_With_Page_Citation/
+├── netlify.toml                 # Netlify build config
 ├── backend/
 │   ├── app/
 │   │   ├── main.py              # FastAPI app entry point & CORS
@@ -152,9 +188,16 @@ RAG_WITH_Frontnd/
 │   ├── test_rag.py              # Automated RAG test suite
 │   ├── create_sample_pdf.py     # PDF generator script
 │   ├── requirements.txt         # Python dependencies
-│   ├── .env                     # Pre-configured environment variables
+│   ├── .env                     # Your local secrets (git-ignored)
 │   └── .env.example
 ├── frontend/
+│   ├── netlify/
+│   │   ├── functions/
+│   │   │   ├── documents.mts    # Production upload/list/serve/delete API
+│   │   │   └── chat.mts         # Production RAG chat + history API
+│   │   ├── lib/shared.ts        # Chunking & helpers
+│   │   └── database/migrations/ # Netlify DB schema
+│   ├── db/                      # Drizzle ORM schema & client
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Sidebar.jsx      # Left sidebar
