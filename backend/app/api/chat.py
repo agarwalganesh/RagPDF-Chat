@@ -70,12 +70,16 @@ async def chat_message(req: ChatRequest):
         history_turns.append({"role": msg.role, "content": msg.content})
 
     # Execute RAG
-    rag_result = rag_service.answer_query(
-        query=req.message,
-        conversation_id=conv_id,
-        document_id=req.document_id or "all",
-        conversation_history=history_turns
-    )
+    try:
+        rag_result = rag_service.answer_query(
+            query=req.message,
+            conversation_id=conv_id,
+            document_id=req.document_id or "all",
+            conversation_history=history_turns
+        )
+    except Exception as e:
+        print(f"Chat error: {e}")
+        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
 
     # Add user message
     conv.messages.append(
