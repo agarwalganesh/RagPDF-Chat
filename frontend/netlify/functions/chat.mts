@@ -4,7 +4,7 @@ import { db } from "../../db/index.js";
 import { chunks, conversations, documents, messages } from "../../db/schema.js";
 import { errorResponse, formatTime, shortId } from "../lib/shared.js";
 
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
 const TOP_K = 5;
 const NOT_FOUND = "I could not find this information in the uploaded document.";
 

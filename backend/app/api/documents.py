@@ -127,7 +127,11 @@ def get_document_pdf(document_id: str):
 
     file_path = Path(doc["file_path"])
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="PDF file missing on server")
+        fallback_path = UPLOADS_DIR / file_path.name
+        if fallback_path.exists():
+            file_path = fallback_path
+        else:
+            raise HTTPException(status_code=404, detail="PDF file missing on server")
 
     return FileResponse(
         path=str(file_path),
@@ -148,6 +152,11 @@ def delete_document(document_id: str):
 
     # Remove physical file
     file_path = Path(doc.get("file_path", ""))
+    if not file_path.exists() and file_path.name:
+        fallback_path = UPLOADS_DIR / file_path.name
+        if fallback_path.exists():
+            file_path = fallback_path
+
     if file_path.exists():
         try:
             os.remove(file_path)
