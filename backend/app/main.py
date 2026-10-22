@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import GROQ_MODEL, EMBEDDING_MODEL_NAME
+from app.config import GROQ_MODEL, EMBEDDING_MODEL_NAME, CORS_ORIGINS
 from app.api.documents import router as documents_router
 from app.api.chat import router as chat_router
 from app.services.vector_store import VectorStore
@@ -31,7 +31,7 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

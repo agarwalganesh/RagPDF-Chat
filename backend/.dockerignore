@@ -1,0 +1,12 @@
+# Ignore Python bytecode, venv, local env, and data volumes
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+.env
+data/
+sample_docs/
+.git/
+.gitignore

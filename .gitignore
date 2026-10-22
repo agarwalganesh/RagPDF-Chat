@@ -27,3 +27,6 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Root env file (used by Docker Compose – contains secrets)
+.env
