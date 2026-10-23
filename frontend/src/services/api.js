@@ -1,8 +1,14 @@
 // In production, set VITE_API_BASE_URL to the deployed FastAPI backend
-// (e.g. https://my-backend.onrender.com). The "/api" suffix is optional.
+// (e.g. https://docurag-backend-g9z0.onrender.com). The "/api" suffix is optional.
 function resolveApiBase() {
-  const raw = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
+  let raw = (import.meta.env.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
   if (!raw) return "/api";
+  if (!raw.startsWith("http://") && !raw.startsWith("https://") && !raw.startsWith("/")) {
+    if (!raw.includes(".")) {
+      raw = `${raw}.onrender.com`;
+    }
+    raw = `https://${raw}`;
+  }
   return raw.endsWith("/api") ? raw : `${raw}/api`;
 }
 
@@ -11,12 +17,21 @@ const API_BASE = resolveApiBase();
 const BACKEND_UNREACHABLE =
   "Backend server is not reachable. Make sure the FastAPI backend is running and VITE_API_BASE_URL points to it.";
 
+async function parseJson(res, defaultError = "Invalid response from server") {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(BACKEND_UNREACHABLE);
+  }
+}
+
 export const api = {
   // Document endpoints
   async getDocuments() {
     const res = await fetch(`${API_BASE}/documents`);
     if (!res.ok) throw new Error("Failed to fetch documents");
-    return res.json();
+    return parseJson(res);
   },
 
   async uploadDocuments(files) {
@@ -34,14 +49,13 @@ export const api = {
       throw new Error(BACKEND_UNREACHABLE);
     }
     if (!res.ok) {
-      const err = await res.json().catch(() => null);
+      const err = await parseJson(res).catch(() => null);
       if (!err) {
-        // Non-JSON response (e.g. the static host's 404/405 page) means the API isn't behind this URL
         throw new Error(`Upload failed (HTTP ${res.status}). ${BACKEND_UNREACHABLE}`);
       }
       throw new Error(err.detail || "Upload failed");
     }
-    return res.json();
+    return parseJson(res);
   },
 
   async deleteDocument(id) {
@@ -49,7 +63,7 @@ export const api = {
       method: "DELETE",
     });
     if (!res.ok) throw new Error("Failed to delete document");
-    return res.json();
+    return parseJson(res);
   },
 
   getDocumentFileUrl(id) {
@@ -64,22 +78,22 @@ export const api = {
       body: JSON.stringify({ message, conversation_id, document_id }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: "Chat request failed" }));
+      const err = await parseJson(res).catch(() => ({ detail: "Chat request failed" }));
       throw new Error(err.detail || "Chat request failed");
     }
-    return res.json();
+    return parseJson(res);
   },
 
   async getConversations() {
     const res = await fetch(`${API_BASE}/chat/conversations`);
     if (!res.ok) throw new Error("Failed to fetch conversations");
-    return res.json();
+    return parseJson(res);
   },
 
   async getConversation(id) {
     const res = await fetch(`${API_BASE}/chat/conversations/${id}`);
     if (!res.ok) throw new Error("Failed to fetch conversation details");
-    return res.json();
+    return parseJson(res);
   },
 
   async deleteConversation(id) {
@@ -87,12 +101,13 @@ export const api = {
       method: "DELETE",
     });
     if (!res.ok) throw new Error("Failed to delete conversation");
-    return res.json();
+    return parseJson(res);
   },
 
   async checkHealth() {
     const res = await fetch(`${API_BASE}/health`);
     if (!res.ok) throw new Error("Backend offline");
-    return res.json();
+    return parseJson(res);
   }
 };
+

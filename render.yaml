@@ -29,10 +29,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: docurag-backend
-          property: host
+        value: https://docurag-backend-g9z0.onrender.com
     routes:
       - type: rewrite
         source: /*
